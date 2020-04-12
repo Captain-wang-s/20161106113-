@@ -1,0 +1,198 @@
+import  requests
+from lxml import html
+import time
+# import traceback
+import csv
+import os
+
+def concat_url(url,star,n):
+    for i in range(star,n+1):
+        # url_Now=url+'/tech/pn'+str(i)
+        if i==1:
+            url_Now=url+'/?PGTID=0d202408-0000-1054-159a-a5271c9729c3&ClickID=4'
+        else :
+            url_Now=url+'/pn'+str(i)+'/?PGTID=0d303655-0000-127a-bc05-053758d095f8&ClickID=6'
+        print("正在爬取#############################################\n：",url_Now)
+        url_Name = 'concat_url_history'
+        urlId=0
+        history(url_Now, url_Name,urlId,i)
+
+
+
+
+
+def history(link,Filename,url_id,n):
+    link=link
+    path= filenames()
+    with open(path+Filename+'.txt','a+',encoding='utf8') as f:
+        f.seek(0,0)
+        link_list=f.readlines()
+        if url_id==0:
+            f.writelines(link + '\n')
+            f.writelines(str(n) + '\n')
+            get_Links(link)
+        elif url_id==1:
+            if link+'\n' not in link_list:
+                f.writelines(link+'\n')
+                f.writelines(str(n) + '\n')
+                infos(link)
+            else:
+                print('内容存在，已跳过！')
+                pass
+
+
+
+def read_history():
+    with open('NewPics/concat_url_history.txt','a+',encoding='utf8') as f:
+        f.seek(0, 0)
+        link_list = f.readlines()
+        url=link_list[-1]
+    return int(url)
+
+
+
+
+
+
+
+
+def get_Links(url):
+    html_infos=web_crawler(url)
+    content=html_infos
+    content = content.replace('<!--', '').replace('-->', '')
+    LISTtree = html.etree.HTML(content)
+    links = LISTtree.xpath('//div[@class="job_name clearfix"]/a/@href')
+    urlid=1
+    historyName='links_history'
+    count=0
+    for link in links:
+        print(link)
+        history(link, historyName,urlid,count)
+
+
+def web_crawler(url):
+    headers=header()
+    time.sleep(10)
+    r = requests.get(url, headers=headers)
+    r.encoding='utf8'
+    html_txt=r.text
+    return html_txt
+
+
+
+def infos(links):
+    info_link=links
+    contents=web_crawler(info_link)
+    contents = contents.replace('<!--', '').replace('-->', '')
+    #downHTML(Name,contents)
+    info_data=html.etree.HTML(contents)
+    Name = filenames()
+    Job_items = {'jobaddress': '//div/span/a[@class="crumb_item"]/text()',
+                 'address_comp': '//div[@class="pos-area"]/span/text()',
+                 'jobName': '//div/span[@class="pos_title"]/text()',
+                 'jouValue': '//span[@class="pos_name"]/text()',
+                 'welfare': '//div/div[@class="pos_welfare"]/span/text()',
+                 'base_limit': '//div[@class="pos_base_condition"]//text()',
+                 'comp_name': '//div[@class="comp_baseInfo_title"]/div/text()',
+                 'lingyu': '//p/a[@class="comp_baseInfo_link"]/text()',
+                 'fare': '//div[@class="pos_base_info"]/span[@class="pos_salary"]/text()',
+                 'work_rules': '//div/div[@class="des"]/text()',
+                 'comp_info': '//div/div[@class="comIntro"]//p/text()'
+                 }
+
+    Job_info_update={}
+
+    count=0
+    for k,v in  Job_items.items():
+        v=info_data.xpath(v)
+        if len(v)==0 :
+            # print(input("请手动点链接打码!!"))
+            time.sleep(10)
+            print(info_link)
+            v = " ".join(v) if len(v) > 0 else '空'
+            # Job_info_update.setdefault(k, v)
+            break
+            # infos(info_link)
+
+        else:
+            v = " ".join(v)  if len(v)>0 else '空'
+            Job_info_update.setdefault(k,v)
+            count+=1
+    if count==len(Job_items):
+        csvHead = list(Job_info_update.keys())
+        doCsvhead(csvHead,Name)
+        csv_value_list=[]
+        csv_value_list.append(Job_info_update)
+        DownCsv(csv_value_list,csvHead,Name)
+
+#csv头部打印模块
+def doCsvhead(keys,Name):
+    global csv_head_count
+    if csv_head_count==0 :
+        csv_head_count=1
+        key =keys
+        with open(Name +'第1次招聘data.csv', 'a+', newline="", encoding="utf_8_sig") as f:
+            # 构建一个数据字典写入的对象
+            f_csv = csv.DictWriter(f, key)
+            f_csv.writeheader()
+    else:
+        pass
+
+#csv行部打印模块
+contYM=0
+def DownCsv(lists,key,Name):
+    global contYM
+    contYM +=1
+    with open(Name+'第1次招聘data.csv', 'a+', newline="", encoding="utf_8_sig") as f:
+        # 构建一个数据字典写入的对象
+        f_csv = csv.DictWriter(f, key)
+        f_csv.writerows(lists)  # 写入多行列表
+        print(lists[0]['comp_name'],'写入成功！')
+        print('第%d条csv数据写入成功！'%(contYM))
+
+def downHTML(Name,content):
+    with open(str(Name) + ".html", 'w', encoding="UTF-8") as baiduFile:
+        baiduFile.write(content)
+
+def filenames():
+    path_now = os.getcwd()
+    # filenames(path_out)
+    # path_out = os.getcwd()
+    # Name = filenames(path_out) + "/"
+    global picCount
+    root_path=path_now
+    os.chdir(root_path)
+    root_wwj="NewPics"
+    if os.path.exists(root_path+"/"+root_wwj)==False:
+        os.mkdir(root_wwj)
+        os.chdir(root_path)
+        return root_wwj + "/"
+    else:
+        return root_wwj+ "/"
+
+
+def header():
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'zh-CN,zh;q=0.9'
+    }
+    return headers
+
+
+
+
+if __name__ == '__main__':
+    if os.path.exists('NewPics/concat_url_history.txt') ==True:
+        start=read_history()
+    else:
+        start=1
+    if os.path.exists('NewPics/第1次招聘data.csv') == True:
+        csv_head_count = 1
+    else:
+        csv_head_count = 0
+    url = 'https://bj.58.com/tech'
+    pages = int(input("请输入要爬取几页："))
+    concat_url(url, start, pages)
+    print("完成")
