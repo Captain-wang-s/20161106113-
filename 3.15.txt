@@ -1,0 +1,154 @@
+import  requests
+from lxml import html
+import time
+import traceback
+import csv
+import os
+
+def concat_url(url,n):
+    for i in range(1,n+1):
+        # url_Now=url+'/tech/pn'+str(i)
+        url_Now='https://bj.58.com/tech/?PGTID=0d202408-0000-1054-159a-a5271c9729c3&ClickID=4'
+        print("正在爬取#############################################\n：",url_Now)
+        html_info=web_crawler(url_Now)
+        get_Links(html_info)
+
+
+# def get_urls(rooturl,Name):
+#     html_txt=select_Link(rooturl)
+#     get_Links(html_txt)
+
+
+
+def get_Links(html_infos):
+    content=html_infos
+    content = content.replace('<!--', '').replace('-->', '')
+    LISTtree = html.etree.HTML(content)
+    links = LISTtree.xpath('//div[@class="job_name clearfix"]/a/@href')
+    count=0
+    for link in links:
+        count+=1
+        print(link)
+        infos(link,str(count))
+
+
+
+def web_crawler(url):
+    headers=header()
+    time.sleep(5)
+    r = requests.get(url, headers=headers)
+    r.encoding='utf8'
+    html_txt=r.text
+    return html_txt
+
+
+
+def infos(links,H_name):
+    info_link=links
+    contents=web_crawler(info_link)
+    contents = contents.replace('<!--', '').replace('-->', '')
+    path_out = os.getcwd()
+    Name=filenames(path_out)+"/"+str(H_name)
+    #downHTML(Name,contents)
+    info_data=html.etree.HTML(contents)
+    print(contents)
+    # v=info_data.xpath('//div/span/a[@class="crumb_item"]/text()')
+    # v=" ".join(v)
+    # jobName= info_data.xpath('//div/span[@class="pos_title"]/text()')
+    # jouValue= info_data.xpath('//span[@class="pos_name"]/text()')
+    # print(v,jobName,jouValue)
+
+    Job_items={ 'jobaddress':'//div/span/a[@class="crumb_item"]/text()"]/text()',
+                'address_comp':'//div[@class="pos-area"]/span/text()',
+                'jobName':'//div/span[@class="pos_title"]/text()',
+                'jouValue':'//span[@class="pos_name"]/text()',
+                'welfare':'//div/div[@class="pos_welfare"]/span/text()',
+                'base_limit':'//div[@class="pos_base_condition"]//text()',
+                'comp_name':'//div[@class="comp_baseInfo_title"]/div/text()',
+                'lingyu':'//p/a[@class="comp_baseInfo_link"]/text()',
+                'fare':'//div[@class="pos_base_info"]/span[@class="pos_salary"]/text()',
+                '岗位职责':'//div/div[@class="des"]/text()',
+                '公司介绍':'//div/div[@class="comIntro"]//p/text()'
+    }
+    Job_info_update=[]
+    csvHead=list(Job_items.keys())
+    doCsvhead(csvHead)
+    for k,v in Job_items.items():
+        v=info_data.xpath(str(v))
+        v = " ".join(v)  if len(v)>0 else '空'
+        Job_info_update.append(v)
+        DownCsv(Job_info_update.append,csvHead)
+
+#csv头部打印模块
+def doCsvhead(keys):
+    global csv_head_count
+    if csv_head_count==0 :
+        csv_head_count=1
+        key =keys
+        with open('DATAs/第1次DATAOKEdata.csv', 'a', newline="", encoding="utf_8_sig") as f:
+            # 构建一个数据字典写入的对象
+            f_csv = csv.DictWriter(f, key)
+            f_csv.writeheader()
+    else:
+        pass
+
+#csv行部打印模块
+contYM=0
+def DownCsv(list,key):
+    global contYM
+    contYM +=1
+    with open('DATAs/第5次DATAOKEdata.csv', 'a', newline="", encoding="utf_8_sig") as f:
+        # 构建一个数据字典写入的对象
+        f_csv = csv.DictWriter(f, key)
+        f_csv.writerows(list)  # 写入多行列表
+        print(list[0]["标题"],'写入成功！')
+        print('第%d条csv数据写入成功！'%(contYM))
+
+def downHTML(Name,content):
+    with open(str(Name) + ".html", 'w', encoding="UTF-8") as baiduFile:
+        baiduFile.write(content)
+
+def filenames(path_root):
+    global picCount
+    root_path=path_root
+    os.chdir(root_path)
+    root_wwj="NewPics"
+    if os.path.exists(root_path+"/"+root_wwj)==False:
+        os.mkdir(root_wwj)
+        os.chdir(root_path)
+        return root_wwj
+    else:
+        return root_wwj
+
+
+
+
+
+
+
+
+def header():
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'zh-CN,zh;q=0.9'
+    }
+    return headers
+
+
+
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    url='https://bj.58.com/tech/?PGTID=0d202408-0000-1054-159a-a5271c9729c3&ClickID=4'
+    pages=int(input("请输入要爬取几页："))
+    csv_head_count=0
+    concat_url(url, pages)
+
+    print("完成")
